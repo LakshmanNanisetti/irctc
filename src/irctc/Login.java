@@ -76,9 +76,50 @@ public class Login {
                     else{
                         category="sl";
                     }
+                    ArrayList<Integer> avl = new ArrayList<Integer>();
+                    ArrayList<Integer> book = new ArrayList<Integer>();
                     for(int i=1;i<=5;i++){
-                        if((category+i).equals("0")){
+                        if(rs.getString(category+i).equals("0")){
                             System.out.println(category+i);
+                            avl.add(i);
+                        }
+                    }
+                    int seatNo=-1;
+                    do{
+                        System.out.println("enter seat nos:or -1 to exit");
+                        seatNo = sc.nextInt();
+                        if(seatNo!=-1&avl.contains(seatNo)){
+                            avl.remove(new Integer(seatNo));
+                            book.add(seatNo);
+                            stmt.execute("update train set "+category+seatNo+"=1 where no="+train_option);
+                        }
+                    }while(seatNo!=-1);
+                    if(!book.isEmpty()){
+                        int total_fare = book.size()*100;
+                        int ticket_id=0;
+                        try{
+                            stmt.execute("insert into ticket values('"+category+","+total_fare+",'"+from+
+                                    "','"+to+"','"+user.mobile+"',"+train_option+",0,0);");
+                            rs = stmt.executeQuery("select * from ticket");
+                            rs.last();
+                            ticket_id = rs.getInt("id");
+                        }catch(Exception e){
+                            System.out.println("ticket insertion:"+e);
+                        }
+                        for(int i:book){
+                            System.out.println("enter the details of the passenger in bearth no-"+i);
+                            System.out.println("name:");
+                            String name = sc.next();
+                            System.out.println("age:");
+                            int age = sc.nextInt();
+                            System.out.println("gender:1 if male 2 if female 3 others");
+                            int gen=sc.nextInt();
+                            
+                            try{
+                                stmt.executeQuery("insert into passenger values('"+name+"',"+age+","+seatNo+","+ticket_id+","+gen+",'"+category+"');");
+                            }catch(Exception e){
+                                System.out.println("passenger insertion:"+e);
+                            }
                         }
                     }
                 }catch(Exception e){
