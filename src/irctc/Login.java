@@ -77,7 +77,9 @@ public class Login {
                         category="sl";
                     }
                     for(int i=1;i<=5;i++){
-                        System.out.println(category+i+"-"+rs.getBytes(category+i));
+                        if((category+i).equals("0")){
+                            System.out.println(category+i);
+                        }
                     }
                 }catch(Exception e){
                     System.out.println("getting the train details!");
