@@ -46,8 +46,8 @@ public class Login {
                 
                 break;
             case 2:
+                System.out.println("your tickets!");
                 bookedTickets(rs,stmt,user,sc);
-                
                 break;
             case 3:
                 cancelTicket(rs,stmt,user,sc);
@@ -98,13 +98,16 @@ public class Login {
 
     private int bookedTickets(ResultSet rs, Statement stmt, User user,Scanner sc) {
         int tick_option=-1;
+        System.out.println("bookedTickets!");
         try{
+            
             rs = stmt.executeQuery("select * from ticket where mobile='"+user.mobile+"';");
+            System.out.println("bookedTickets try!");
             rs.beforeFirst();
 
             while(!rs.isLast()){
                 rs.next();
-                System.out.println(rs.getInt("id")+"\t"+rs.getString("f")+"\t"+rs.getString("t"));
+                System.out.println(rs.getInt("id")+"\t"+rs.getString("train_name")+"\t"+rs.getString("f")+"\t"+rs.getString("t"));
             }
             System.out.println("ticket id:");
             tick_option=sc.nextInt();
@@ -112,109 +115,168 @@ public class Login {
             rs.beforeFirst();
             while(!rs.isLast()){
                 rs.next();
-                System.out.println(rs.getString("name")+"\t"+rs.getInt("age")+"\t"+rs.getInt("bearth_no")
+                String res = (rs.getInt("id")+"\t"+rs.getString("name")+"\t"+rs.getInt("age")+"\t"+rs.getInt("bearth_no")
                 +"\t"+rs.getString("category"));
+                if(rs.getInt("wl")!=0){
+                    res+="waiting list";
+                }
+                System.out.println(res);
             }
         }catch(Exception e){
+            System.out.println(e);
         }
         return tick_option;
     }
 
     private void bookTicket(ResultSet rs, Statement stmt, User user, Scanner sc) {
         System.out.println("enter the from station");
-                String from = sc.next();
-                System.out.println("enter the to station");
-                String to = sc.next();
-                System.out.println("enter the day(1 to 7):");
-                int day = sc.nextInt();
-                
-                ArrayList<Integer> trainNos = new ArrayList<>();
+        String from = sc.next();
+        System.out.println("enter the to station");
+        String to = sc.next();
+        System.out.println("enter the day(1 to 7):");
+        int day = sc.nextInt();
+
+        ArrayList<Integer> trainNos = new ArrayList<>();
+        try{
+
+            rs = stmt.executeQuery("select * from train where f='"+from+"' and t='"+to+"' and day="+day+";");
+            rs.beforeFirst();
+            while(rs.next()){
+                System.out.println(rs.getString("no")+"\t"+rs.getString("name")+"\t"+rs.getString("f")+"\t"+rs.getString("t"));
+                trainNos.add(rs.getInt("no"));
+            }
+        }catch(Exception e){
+            System.out.println("exception at fetching trains:"+e);
+        }
+        System.out.println("enter the number of the train that you want to book:");
+        int train_option;
+        while(true){
+            try{
+                train_option=sc.nextInt();
+                if(!trainNos.contains(train_option)){
+                    throw new Exception();
+                }
+                break;
+            }catch(Exception e){
+                System.out.println("please enter a valid input:");
+            }
+        }
+        try{
+            rs = stmt.executeQuery("select * from train where no='"+train_option+"' and day="+day+";");
+            rs.first();
+            String train_name = rs.getString("name");
+            System.out.println("train_name = "+train_name);
+            System.out.println("select an option:\n1.ac\n2.sleeper");
+            int cat = sc.nextInt();
+            String category;
+            if(cat==1){
+                category="ac";
+            }
+            else{
+                category="sl";
+            }
+            ArrayList<Integer> avl = new ArrayList<Integer>();
+            ArrayList<Integer> book = new ArrayList<Integer>();
+            for(int i=1;i<=5;i++){
+                if(rs.getString(category+i).equals("0")){
+//                            System.out.println(category+i);
+                    avl.add(i);
+                }
+            }
+            System.out.println("No. of seats available="+avl.size()+"\n"
+                    + "Enter the no. of seats to book:");
+            int no = sc.nextInt();
+            int ticket_id=0;
+            if(no>0){
+                int total_fare = no*100;
+
                 try{
-                    
-                    rs = stmt.executeQuery("select * from train where f='"+from+"' and t='"+to+"' and day="+day+";");
-                    rs.beforeFirst();
-                    while(rs.next()){
-                        System.out.println(rs.getString("no")+"\t"+rs.getString("name")+"\t"+rs.getString("f")+"\t"+rs.getString("t"));
-                        trainNos.add(rs.getInt("no"));
-                    }
+                    stmt.execute("insert into ticket (category,total_fare,f,t,mobile,train_no,wl,cancelled,day,train_name) "
+                            + "values('"+category+"',"+total_fare+",'"+from+
+                            "','"+to+"','"+user.mobile+"',"+train_option+",0,0,"+day+",'"+train_name+"');");
+                    System.out.println("TICKET INSERTED");
+                    rs = stmt.executeQuery("select * from ticket");
+                    rs.last();
+                    ticket_id = rs.getInt("id");
+                    System.out.println("ticke id is:"+ticket_id);
                 }catch(Exception e){
-                    System.out.println("exception at fetching trains:"+e);
+                    System.out.println("ticket insertion:"+e);
                 }
-                System.out.println("enter the number of the train that you want to book:");
-                int train_option;
-                while(true){
-                    try{
-                        train_option=sc.nextInt();
-                        if(!trainNos.contains(train_option)){
-                            throw new Exception();
-                        }
-                        break;
-                    }catch(Exception e){
-                        System.out.println("please enter a valid input:");
-                    }
+            }
+            int wl=0;
+            int bNo;
+            System.out.println("avl is:"+avl);
+            for(int i=0;i<no;i++){
+
+                if(avl.isEmpty()){
+                    wl++;
+                    bNo=wl;
                 }
-                try{
-                    rs = stmt.executeQuery("select * from train where no='"+train_option+"' and day="+day+";");
+                else{
+                    
+                    bNo = avl.remove(0);
+                    System.out.println("assigned-bNo="+bNo+"i="+i);
+                    rs = stmt.executeQuery("select avl"+category+" from train where no="+train_option+" and day="+day+";");
                     rs.first();
-                    System.out.println("select an option:\n1.ac\n2.sleeper");
-                    int cat = sc.nextInt();
-                    String category;
-                    if(cat==1){
-                        category="ac";
-                    }
-                    else{
-                        category="sl";
-                    }
-                    ArrayList<Integer> avl = new ArrayList<Integer>();
-                    ArrayList<Integer> book = new ArrayList<Integer>();
-                    for(int i=1;i<=5;i++){
-                        if(rs.getString(category+i).equals("0")){
-                            System.out.println(category+i);
-                            avl.add(i);
-                        }
-                    }
-                    int seatNo=-1;
-                    do{ 
-                        System.out.println("enter seat nos:or -1 to exit");
-                        seatNo = sc.nextInt();
-                        if(seatNo!=-1&avl.contains(seatNo)){
-                            avl.remove(new Integer(seatNo));
-                            if(!book.contains(seatNo))
-                                {book.add(seatNo);} 
-                            stmt.execute("update train set "+category+seatNo+"=1 where no="+train_option+" and day="+day+";");
-                        }
-                    }while(seatNo!=-1);
-                    if(!book.isEmpty()){
-                        
-                        int total_fare = book.size()*100;
-                        int ticket_id=0;
-                        try{
-                            stmt.execute("insert into ticket (category,total_fare,f,t,mobile,train_no,wl,cancelled,day) "
-                                    + "values('"+category+"',"+total_fare+",'"+from+
-                                    "','"+to+"','"+user.mobile+"',"+train_option+",0,0,"+day+");");
-                            rs = stmt.executeQuery("select * from ticket");
-                            rs.last();
-                            ticket_id = rs.getInt("id");
-                            System.out.println("ticke id is:"+ticket_id);
-                        }catch(Exception e){
-                            System.out.println("ticket insertion:"+e);
-                        }
-                        for(int i:book){
-                            System.out.println("enter the details of the passenger in bearth no-"+i);
-                            System.out.println("name:");
-                            String name = sc.next();
-                            System.out.println("age:");
-                            int age = sc.nextInt();
-                            System.out.println("gender:1 if male 2 if female 3 others");
-                            int gen=sc.nextInt();
-                            
-                            try{
-                                stmt.execute("insert into passenger (name,age,bearth_no,ticket_id,gender,category) values('"+name+"',"+age+","+i+","+ticket_id+","+gen+",'"+category+"');");
-                            }catch(Exception e){
-                                System.out.println("passenger insertion:"+e);
-                            }
-                        }
-                    }
+                    
+                    stmt.execute("update train set "+category+bNo+"=1,avl"+category+"="+(rs.getInt("avl"+category)-1)+" where no="+train_option+" and day="+day+";");
+                }
+
+                System.out.println("enter the details of the passenger no-"+(i+1));
+                System.out.println("name:");
+                String name = sc.next();
+                System.out.println("age:");
+                int age = sc.nextInt();
+                System.out.println("gender:1 if male 2 if female 3 others");
+                int gen=sc.nextInt();
+                try{
+                    stmt.execute("insert into passenger (name,age,bearth_no,ticket_id,gender,category,wl) values('"+name+"',"+age+","+bNo+","+ticket_id+","+gen+",'"+category+"',"+wl+");");
+                }catch(Exception e){
+                    System.out.println("passenger insertion:"+e);
+                }
+            }
+//                    int seatNo=-1;
+//                    do{ 
+//                        System.out.println("enter seat nos:or -1 to exit");
+//                        seatNo = sc.nextInt();
+//                        if(seatNo!=-1&avl.contains(seatNo)){
+//                            avl.remove(new Integer(seatNo));
+//                            if(!book.contains(seatNo))
+//                                {book.add(seatNo);} 
+//                            stmt.execute("update train set "+category+seatNo+"=1 where no="+train_option+" and day="+day+";");
+//                        }
+//                    }while(seatNo!=-1);
+//                    if(!book.isEmpty()){
+//                        
+//                        int total_fare = no*100;
+//                        int ticket_id=0;
+//                        try{
+//                            stmt.execute("insert into ticket (category,total_fare,f,t,mobile,train_no,wl,cancelled,day) "
+//                                    + "values('"+category+"',"+total_fare+",'"+from+
+//                                    "','"+to+"','"+user.mobile+"',"+train_option+",0,0,"+day+");");
+//                            rs = stmt.executeQuery("select * from ticket");
+//                            rs.last();
+//                            ticket_id = rs.getInt("id");
+//                            System.out.println("ticke id is:"+ticket_id);
+//                        }catch(Exception e){
+//                            System.out.println("ticket insertion:"+e);
+//                        }
+//                        for(int i:book){
+//                            System.out.println("enter the details of the passenger no-"+i);
+//                            System.out.println("name:");
+//                            String name = sc.next();
+//                            System.out.println("age:");
+//                            int age = sc.nextInt();
+//                            System.out.println("gender:1 if male 2 if female 3 others");
+//                            int gen=sc.nextInt();
+//                            
+//                            try{
+//                                stmt.execute("insert into passenger (name,age,bearth_no,ticket_id,gender,category) values('"+name+"',"+age+","+i+","+ticket_id+","+gen+",'"+category+"');");
+//                            }catch(Exception e){
+//                                System.out.println("passenger insertion:"+e);
+//                            }
+//                        }
+//                    }
                 }catch(Exception e){
                     System.out.println("getting the train details!:"+e);
                 }
@@ -222,27 +284,54 @@ public class Login {
 
     private void cancelTicket(ResultSet rs, Statement stmt, User user, Scanner sc) {
         int ticket = bookedTickets(rs,stmt,user,sc);
-        int train_no,day,passenger;
+        int train_no,day,passenger,bNo,wlNo;
         String category;
+        System.out.println("enter passenger no to cancel:");
+        passenger = sc.nextInt();
         try{
             rs = stmt.executeQuery("select * from ticket where id="+ticket);
             rs.first();
             train_no = rs.getInt("train_no");
             category = rs.getString("category").trim();
             day = rs.getInt("day");
-            rs = stmt.executeQuery("select * from passenger where ticket_id="+ticket);
+            rs = stmt.executeQuery("select bearth_no,wl from passenger where ticket_id="+ticket+";");
+            bNo  = rs.getInt("bearth_no");
+            wlNo = rs.getInt("wl");
+            if(wlNo==0){
+                stmt.execute("update train set "+category+bNo+" = 0 where no="+train_no+" and day="+day+";");
+            }
+            rs = stmt.executeQuery("select wl from passenger where wl<>0 and train_no="+train_no+" and day="+day+";");
             rs.beforeFirst();
-            ArrayList<Integer> bearthNos = new ArrayList<>();
-            while(!rs.isLast()){
+            boolean flag=true;
+            while(!rs.last()){
                 rs.next();
-//                passenger = rs.getInt("id");
-                bearthNos.add(rs.getInt("bearth_no"));
+                if(flag){
+                    stmt.execute("update train set "+category+bNo+" = 1 where no="+train_no+" and day="+day+";");
+                    flag=false;
+                }
+                stmt.execute("update passenger set wl="+(rs.getInt("wl")-1)+" where wl<>0 and train_no="+train_no+" and day="+day+";");
             }
-            for(int i:bearthNos){
-                stmt.execute("update train set "+category+i+" = 0 where no="+train_no+" and day="+day+";");
-            }
-            stmt.execute("delete from passenger where ticket_id="+ticket+";");
-            stmt.execute("delete from ticket where id="+ticket+";");
+//            rs = stmt.executeQuery("select * from passenger where ticket_id="+ticket);
+//            rs.beforeFirst();
+//            ArrayList<Integer> bearthNos = new ArrayList<>();
+//            while(!rs.isLast()){
+//                rs.next();
+////                passenger = rs.getInt("id");
+//                bearthNos.add(rs.getInt("bearth_no"));
+//            }
+//            for(int i:bearthNos){
+//                stmt.execute("update train set "+category+i+" = 0 where no="+train_no+" and day="+day+";");
+//            }
+//            rs = stmt.executeQuery("select bearth_no from passenger where ticket_id="+ticket+";");
+//            ArrayList<Integer> can = new ArrayList<>();
+//            rs.beforeFirst();
+//            while(!rs.last()){
+//                rs.next();
+//                can.add(rs.getInt(bearth_no));
+//            }
+//            stmt.execute("delete from passenger where ticket_id="+ticket+";");
+//            stmt.execute("update ticket set cancelled=1 where id="+ticket+";");
+            
         }catch(Exception e){
             System.out.println("cancel ticket fault: "+e);
         }
