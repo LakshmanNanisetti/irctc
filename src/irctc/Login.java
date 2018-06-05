@@ -283,7 +283,7 @@ public class Login {
     }
 
     private void cancelTicket(ResultSet rs, Statement stmt, User user, Scanner sc) {
-        int ticket = bookedTickets(rs,stmt,user,sc);
+        int ticket=bookedTickets(rs,stmt,user,sc);
         int train_no,day,passenger,bNo,wlNo;
         String category;
         System.out.println("enter passenger no to cancel:");
@@ -294,43 +294,54 @@ public class Login {
             train_no = rs.getInt("train_no");
             category = rs.getString("category").trim();
             day = rs.getInt("day");
-            rs = stmt.executeQuery("select bearth_no,wl from passenger where ticket_id="+ticket+";");
+            rs = stmt.executeQuery("select bearth_no,wl from passenger where id="+passenger+";");
+            
+            rs.first();
             bNo  = rs.getInt("bearth_no");
             wlNo = rs.getInt("wl");
+            int a=-1;
+            System.out.println("before deleting record");
             if(wlNo==0){
-                stmt.execute("update train set "+category+bNo+" = 0 where no="+train_no+" and day="+day+";");
+                rs = stmt.executeQuery("select * from train where no="+train_no+" and day="+day+";");
+                rs.first();
+                a = rs.getInt("avl"+category); 
+                a++;
+                stmt.execute("update train set "+category+bNo+" = 0,avl"+category+"="+a+" where no="+train_no+" and day="+day+";");
             }
-            rs = stmt.executeQuery("select wl from passenger where wl<>0 and train_no="+train_no+" and day="+day+";");
+            
+            rs = stmt.executeQuery("select id from ticket where train_no="+train_no+";");
             rs.beforeFirst();
+            ResultSet rs2;
             boolean flag=true;
             while(!rs.last()){
                 rs.next();
-                if(flag){
-                    stmt.execute("update train set "+category+bNo+" = 1 where no="+train_no+" and day="+day+";");
+                int id= rs.getInt("id");
+                rs2 = stmt.executeQuery("select id,wl from passenger where ticket_id="+id+"and wl<>0");
+                stmt.execute("update train set avl"+category+"="+(a+1)+" where no="+train_no+" and day="+day+";");
+                int wl = rs.getInt("wl");
+                
+                if(wl==1&&flag){
                     flag=false;
+                    stmt.execute("update passenger set wl=0,bearth_no="+bNo+"where id="+rs.getInt("id"));
                 }
-                stmt.execute("update passenger set wl="+(rs.getInt("wl")-1)+" where wl<>0 and train_no="+train_no+" and day="+day+";");
+                else{
+                    stmt.execute("update passenger set wl="+(wl-1)+"where id="+rs.getInt("id"));
+                }
             }
-//            rs = stmt.executeQuery("select * from passenger where ticket_id="+ticket);
-//            rs.beforeFirst();
-//            ArrayList<Integer> bearthNos = new ArrayList<>();
-//            while(!rs.isLast()){
-//                rs.next();
-////                passenger = rs.getInt("id");
-//                bearthNos.add(rs.getInt("bearth_no"));
-//            }
-//            for(int i:bearthNos){
-//                stmt.execute("update train set "+category+i+" = 0 where no="+train_no+" and day="+day+";");
-//            }
-//            rs = stmt.executeQuery("select bearth_no from passenger where ticket_id="+ticket+";");
-//            ArrayList<Integer> can = new ArrayList<>();
-//            rs.beforeFirst();
+            
+            
+            
+//            System.out.println("after deleting record");
 //            while(!rs.last()){
 //                rs.next();
-//                can.add(rs.getInt(bearth_no));
+//                if(flag){
+//                    stmt.execute("update train set "+category+bNo+" = 1 where no="+train_no+" and day="+day+";");
+//                    flag=false;
+//                }
+//                stmt.execute("update passenger set wl="+(rs.getInt("wl")-1)+" where wl<>0 and train_no="+train_no+" and day="+day+";");
 //            }
-//            stmt.execute("delete from passenger where ticket_id="+ticket+";");
-//            stmt.execute("update ticket set cancelled=1 where id="+ticket+";");
+            
+            stmt.execute("delete from passenger where id="+passenger+";");            
             
         }catch(Exception e){
             System.out.println("cancel ticket fault: "+e);
