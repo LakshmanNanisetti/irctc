@@ -319,7 +319,6 @@ public class Login {
             ResultSet rs2;
             boolean flag=true;
             Statement stmt2 = conn.createStatement();
-             
             while(rs.next()){
                 System.out.println("entered1");
                 int id= rs.getInt("id");
@@ -336,14 +335,13 @@ public class Login {
                             flag=false;
                             System.out.println("entered2");
                             stmt.execute("update train set avl"+category+"="+(a-1)+","+category+bNo+"=1 where no="+train_no+" and day="+day+";");
-                            System.out.println("entered3");
+                            System.out.println("entered3 FOR "+bNo);
                             stmt.execute("update passenger set wl=0,bearth_no="+bNo+" where id="+id2+";");
                         }
                         else{
                             stmt.execute("update passenger set wl="+(wl-1)+" where id="+id2+";");
                         }
                     }
-                    
                 }
             }
             System.out.println("going to delete passenger"+passenger);
